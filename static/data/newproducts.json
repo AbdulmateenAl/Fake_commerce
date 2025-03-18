@@ -1,0 +1,16 @@
+{
+    "products": [
+        {
+            "name": "Bag",
+            "price": 100
+        },
+        {
+            "name": "Bag",
+            "price": 100
+        },
+        {
+            "name": "Bag",
+            "price": 100
+        }
+    ]
+}
