@@ -1,15 +1,22 @@
 import json
 import os
 
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, session
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
 from dotenv import load_dotenv
 
 import psycopg2
+import jwt
+from datetime import datetime, timedelta, timezone
+
+from functools import wraps
+
+secret_key = os.getenv("secret_key")
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = secret_key
 
 load_dotenv()  # Loads environment variables
 user = os.getenv("user")
@@ -30,6 +37,20 @@ def get_db_connection():
         port=port
     )
 
+def validate_token(func):
+    @wraps(func)
+    def decorated(*args, **kwargs):
+        token = request.args.get('token')
+        if not token:
+            return jsonify({"message": "Token is missing"}), 401
+        try:
+            decoded_payload = jwt.decode(token, app.config['SECRET_KEY'])
+        except jwt.ExpiredSignatureError:
+            print("Token has expired, Please log in again")
+        except jwt.InvalidTokenError:
+            print("Invalid token")
+    return decorated
+
 
 # Rate limiting
 limiter = Limiter(
@@ -40,10 +61,25 @@ limiter = Limiter(
 )
 
 @app.route('/', methods=['GET'])
-@app.route('/<name>', methods=['GET'])
 @limiter.exempt
 def home(name=None):
-    return render_template('index.html', person=name)
+    if not session.get('logged_in'):
+        return render_template('login.html')
+    else:
+        return 'Logged in currently!'
+    
+@app.route('/auth', methods=['GET'])
+@validate_token
+def auth():
+    return render_template('index.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.form['username'] == 'abdul' and request.form['password'] == '12345':
+        session['logged_in'] = True
+        token = jwt.encode({'user': request.form['username'], 'exp': datetime.now(timezone.utc) + timedelta(seconds=10)}, app.config['SECRET_KEY'])
+        return jsonify({"message": "Login successful", "token": token}), 200
+    return "Authentication failed!"
 
 
 @app.route('/products', methods=['POST'])  # Creates a product
