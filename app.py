@@ -1,7 +1,7 @@
 import json
 import os
 
-from flask import Flask, request, jsonify, render_template, session
+from flask import Flask, request, jsonify, render_template, session, make_response, redirect, url_for
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
@@ -37,19 +37,29 @@ def get_db_connection():
         port=port
     )
 
+
 def validate_token(func):
     @wraps(func)
     def decorated(*args, **kwargs):
-        token = request.args.get('token')
+        token = request.cookies.get('token')
+
         if not token:
-            return jsonify({"message": "Token is missing"}), 401
+            session.pop('logged_in', None)
+            return render_template('login.html')
+
         try:
-            decoded_payload = jwt.decode(token, app.config['SECRET_KEY'])
+            jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
         except jwt.ExpiredSignatureError:
-            print("Token has expired, Please log in again")
+            session.pop('logged_in', None)
+            response = make_response(redirect(url_for('login')))
+            response.set_cookie('token', '', expires=0)
+            return response
         except jwt.InvalidTokenError:
-            print("Invalid token")
+            session.pop('logged_in', None)
+            return redirect(url_for('login'))
+
         return func(*args, **kwargs)
+
     return decorated
 
 
@@ -61,26 +71,46 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
+
 @app.route('/', methods=['GET'])
+@validate_token
 @limiter.exempt
 def home():
-    if not session.get('logged_in'):
-        return render_template('login.html')
-    else:
-        return 'Logged in currently!'
-    
+        return render_template('home.html')
+
 @app.route('/auth', methods=['GET'])
 @validate_token
 def auth():
-    return render_template('index.html')
+    return render_template('home.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.form['username'] == 'abdul' and request.form['password'] == '12345':
-        session['logged_in'] = True
-        token = jwt.encode({'user': request.form['username'], 'exp': datetime.now(timezone.utc) + timedelta(seconds=10)}, app.config['SECRET_KEY'])
-        return jsonify({"message": "Login successful", "token": token}), 200
-    return "Authentication failed!"
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        if not username or not password:
+            return jsonify({"message": "Missing username or password"}), 400
+
+        if username == 'abdul' and password == '12345':
+            session['logged_in'] = True
+            token = jwt.encode(
+                {'user': username, 'exp': datetime.now(
+                    timezone.utc) + timedelta(seconds=120)},
+                app.config['SECRET_KEY'],
+                algorithm="HS256"
+            )
+            response = make_response(jsonify({"message": "Login successful"}))
+            response.set_cookie(
+                'token',
+                token,
+                httponly=True,
+                secure=True,
+                samesite='Strict'
+            )
+            return response
+
+    return jsonify({"message": "Invalid credentials"}), 401
 
 
 @app.route('/products', methods=['POST'])  # Creates a product
