@@ -49,6 +49,7 @@ def validate_token(func):
             print("Token has expired, Please log in again")
         except jwt.InvalidTokenError:
             print("Invalid token")
+        return func(*args, **kwargs)
     return decorated
 
 
@@ -62,7 +63,7 @@ limiter = Limiter(
 
 @app.route('/', methods=['GET'])
 @limiter.exempt
-def home(name=None):
+def home():
     if not session.get('logged_in'):
         return render_template('login.html')
     else:
