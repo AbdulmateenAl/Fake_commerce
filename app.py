@@ -13,6 +13,8 @@ from datetime import datetime, timedelta, timezone
 
 from functools import wraps
 
+from werkzeug.security import generate_password_hash, check_password_hash
+
 secret_key = os.getenv("secret_key")
 
 app = Flask(__name__)
@@ -76,12 +78,67 @@ limiter = Limiter(
 @validate_token
 @limiter.exempt
 def home():
-        return render_template('home.html')
+        
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT name, price FROM products;""")
+        products = cur.fetchall()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        return jsonify({"message": "An error occurred while fetching the products", "error": str(e)}),
+    return render_template('home.html', products=products)
 
 @app.route('/auth', methods=['GET'])
 @validate_token
 def auth():
     return render_template('home.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register_user():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        if not username or not password:
+            return jsonify({"message": "Missing username or password"}), 400
+        
+        hashed_password = generate_password_hash(password)
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute(
+                """CREATE TABLE IF NOT EXISTS users(id SERIAL PRIMARY KEY, username VARCHAR(255), password VARCHAR(255) NOT NULL, role VARCHAR(255))""")
+            cur.execute("""INSERT INTO users (username, password, role) VALUES (%s, %s, %s);""",
+                        (username, hashed_password, "admin"))
+            conn.commit()
+            cur.close()
+            conn.close()
+            print("User created successfully")
+        except Exception as e:
+            return jsonify({"message": "An error occurred while creating the user", "error": str(e)}), 500
+
+
+    return render_template('register.html')
+
+@app.route('/admin/<user>', methods=['GET'])
+def admin(user):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT username FROM users WHERE role = %s AND username = %s", ("admin", user))
+        db_username = cur.fetchone()
+        cur.close()
+        conn.close()
+        if db_username:
+            return render_template("admin_page.html")
+    except Exception as e:
+        return jsonify({"message": str(e)})
+    
+    return jsonify({"message": "You are not an authorized user"})
+    
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -91,31 +148,44 @@ def login():
 
         if not username or not password:
             return jsonify({"message": "Missing username or password"}), 400
+        
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT username, password FROM users WHERE username = %s", (request.form.get('username'),))
+            db_username, db_password = cur.fetchone()
+            cur.close()
+            conn.close()
 
-        if username == 'abdul' and password == '12345':
-            session['logged_in'] = True
-            token = jwt.encode(
-                {'user': username, 'exp': datetime.now(
-                    timezone.utc) + timedelta(seconds=120)},
-                app.config['SECRET_KEY'],
-                algorithm="HS256"
-            )
-            response = make_response(jsonify({"message": "Login successful"}))
-            response.set_cookie(
-                'token',
-                token,
-                httponly=True,
-                secure=True,
-                samesite='Strict'
-            )
-            return response
+            if username == db_username and check_password_hash(db_password, password):
+                session['logged_in'] = True
+                token = jwt.encode(
+                    {'user': username, 'exp': datetime.now(
+                        timezone.utc) + timedelta(hours=1)},
+                    app.config['SECRET_KEY'],
+                    algorithm="HS256"
+                )
+                response = make_response(jsonify({"message": "Login successful"}))
+                response.set_cookie(
+                    'token',
+                    token,
+                    httponly=True,
+                    secure=True,
+                    samesite='Strict'
+                )
+                return response
+        except Exception as e:
+            return jsonify({"message": "An error occurred while logging in", "error": str(e)}), 500
 
-    return jsonify({"message": "Invalid credentials"}), 401
+    return render_template('login.html')
 
 
 @app.route('/products', methods=['POST'])  # Creates a product
 def create_product():
-    response = request.get_json()  # Gets the product from the request
+    if request.content_type == 'application/json':
+        response = request.get_json()
+    else:
+        response = request.form
     if not response:
         # Returns an error if no product is provided
         return jsonify({"message": "No product provided"}), 400
@@ -193,7 +263,10 @@ def delete_product(id):
 
 @app.route('/products/<int:id>', methods=['PUT'])  # Updates a product by id
 def update_product(id):
-    response = request.get_json()  # Gets the product from the request
+    if request.content_type == 'application/json':
+        response = request.get_json()
+    else:
+        response = request.form
     if not response:
         # Returns an error if no product is provided
         return jsonify({"message": "No product provided"}), 400
@@ -214,7 +287,13 @@ def update_product(id):
 
 @app.route('/orders', methods=['POST'])  # Creates an order
 def create_order():
-    response = request.get_json()
+    if request.content_type == 'application/json':
+        response = request.get_json()
+    else:
+        response = request.form
+
+    print(response)
+
     if not response:
         return jsonify({"message": "No order provided"}), 400
 
@@ -222,9 +301,9 @@ def create_order():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("""CREATE TABLE IF NOT EXISTS orders(order_id SERIAL PRIMARY KEY, product_id INT, quantity INT, FOREIGN KEY (product_id) REFERENCES products(id))""")
-        cur.execute("""INSERT INTO orders (product_id, quantity) VALUES (%s, %s);""",
-                    (response['product_id'], response['quantity']))
+        cur.execute("""CREATE TABLE IF NOT EXISTS orders(order_id SERIAL PRIMARY KEY, product_name VARCHAR(255), quantity INT)""")
+        cur.execute("""INSERT INTO orders (product_name, quantity) VALUES (%s, %s);""",
+                    (response.get('name'), response.get('quantity')))
         conn.commit()
         cur.close()
         conn.close()
@@ -241,7 +320,7 @@ def get_orders():
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            "SELECT p.id, p.name, p.price, o.quantity FROM products p JOIN orders o ON p.id = o.product_id;")
+            "SELECT p.id, p.name, p.price, o.quantity FROM products p JOIN orders o ON p.name = o.product_name;")
         orders = cur.fetchall()
         cur.close()
         conn.close()
@@ -258,7 +337,7 @@ def get_order(id):
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            "SELECT p.id, p.name, p.price, o.quantity FROM products p JOIN orders o ON p.id = o.product_id WHERE o.order_id = %s;", (id,))
+            "SELECT p.id, p.name, p.price, o.quantity FROM products p JOIN orders o ON p.name = o.product_name WHERE o.order_id = %s;", (id,))
         order = cur.fetchone()
         cur.close()
         conn.close()

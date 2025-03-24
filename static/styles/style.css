@@ -1,0 +1,13 @@
+.product {
+  display: flex;
+  color: blue;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  width: 250px;
+  height: 100px;
+  align-items: center;
+}
+
+h3 {
+  color: red;
+}

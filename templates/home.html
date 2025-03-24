@@ -3,13 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/style.css') }}">
     <title>Document</title>
 </head>
 <body>
-    {% if person %}
-    <h1>Hello {{person}}</h1>
-    {% else %}
-    <h1>Hello World</h1>
-    {% endif %}
+    {% block content %}
+    <h1>Home</h1>
+    <p>Welcome to the home page</p>
+    {% for name, price in products %}
+        <div class="product">
+            <h3 id="product_name">{{ name }}</h3>
+            <h3>${{ price }}</h3>
+            <form action="/products" method="POST">
+                <input type="number" name="quantity" id="quantity" placeholder="Quantity" min="1", max="10", step="1">
+                <a href="{{ url_for('create_order') }}"><button type="submit">order</button></a>
+            </form>
+        </div>
+    {% endfor %}
+    {% endblock %}
+    <script>
+        document.querySelectorAll('.product').forEach(product => {
+            product.querySelector('form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = product.querySelector('#product_name').textContent;
+                const quantity = product.querySelector('#quantity').value;
+
+                
+                if (!name || !quantity) {
+                    return alert('Please put in your quantity');
+                }
+                
+                fetch('/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        "name": name,
+                        "quantity": quantity})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log(name, quantity);
+                    console.log(data);
+                });
+            });
+        });
+    </script>
 </body>
 </html>
