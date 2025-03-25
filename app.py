@@ -257,7 +257,7 @@ def get_products():
     return jsonify({"message": "Products fetched successfully", "products": products}), 200
 
 
-@app.route('/products/<int:id>', methods=['GET'])  # Fetches a product by id
+@app.route('/product/<int:id>', methods=['GET'])  # Fetches a product by id
 def get_product(id):
     # Connects to the database and fetches the product by id
     try:
@@ -272,7 +272,7 @@ def get_product(id):
     return jsonify({"message": "Product fetched successfully", "product": product}), 200
 
 
-@app.route('/products/<int:id>', methods=['DELETE'])  # Deletes a product by id
+@app.route('/product/<int:id>', methods=['DELETE'])  # Deletes a product by id
 def delete_product(id):
     # Connects to the database and deletes the product by id
     try:
