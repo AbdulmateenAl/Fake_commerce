@@ -206,7 +206,7 @@ def login():
     return render_template('login.html')
 
 
-@app.route('/products', methods=['POST'])  # Creates a product
+@app.route('/product', methods=['POST'])  # Creates a product
 def create_product():
     if request.content_type == 'application/json':
         response = request.get_json()
