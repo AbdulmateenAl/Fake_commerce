@@ -50,17 +50,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Pet"
+                  "$ref": "#/components/schemas/Product"
                 }
               },
               "application/xml": {
                 "schema": {
-                  "$ref": "#/components/schemas/Pet"
+                  "$ref": "#/components/schemas/Product"
                 }
               },
               "application/x-www-form-urlencoded": {
                 "schema": {
-                  "$ref": "#/components/schemas/Pet"
+                  "$ref": "#/components/schemas/Product"
                 }
               }
             },
@@ -120,7 +120,7 @@
                   "schema": {
                     "type": "array",
                     "items": {
-                      "$ref": "#/components/schemas/Pet"
+                      "$ref": "#/components/schemas/Product"
                     }
                   }
                 },
@@ -184,7 +184,7 @@
               "content": {
                 "application/json": {
                   "schema": {
-                    "$ref": "#/components/schemas/Pet"
+                    "$ref": "#/components/schemas/Product"
                   }
                 },
                 "application/xml": {
@@ -293,7 +293,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Pet"
+                  "$ref": "#/components/schemas/Product"
                 }
               },
               "application/xml": {
@@ -368,17 +368,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Pet"
+                  "$ref": "#/components/schemas/Order"
                 }
               },
               "application/xml": {
                 "schema": {
-                  "$ref": "#/components/schemas/Pet"
+                  "$ref": "#/components/schemas/Order"
                 }
               },
               "application/x-www-form-urlencoded": {
                 "schema": {
-                  "$ref": "#/components/schemas/Pet"
+                  "$ref": "#/components/schemas/Order"
                 }
               }
             },
@@ -438,7 +438,7 @@
                   "schema": {
                     "type": "array",
                     "items": {
-                      "$ref": "#/components/schemas/Pet"
+                      "$ref": "#/components/schemas/OrderResponse"
                     }
                   }
                 },
@@ -502,7 +502,7 @@
               "content": {
                 "application/json": {
                   "schema": {
-                    "$ref": "#/components/schemas/Pet"
+                    "$ref": "#/components/schemas/OrderResponse"
                   }
                 },
                 "application/xml": {
@@ -611,17 +611,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Pet"
+                  "$ref": "#/components/schemas/PutOrder"
                 }
               },
               "application/xml": {
                 "schema": {
-                  "$ref": "#/components/schemas/Pet"
+                  "$ref": "#/components/schemas/PutOrder"
                 }
               },
               "application/x-www-form-urlencoded": {
                 "schema": {
-                  "$ref": "#/components/schemas/Pet"
+                  "$ref": "#/components/schemas/PutOrder"
                 }
               }
             },
@@ -879,37 +879,31 @@
         "Order": {
           "type": "object",
           "properties": {
-            "id": {
-              "type": "integer",
-              "format": "int64",
-              "example": 10
-            },
-            "petId": {
-              "type": "integer",
-              "format": "int64",
-              "example": 198772
+            "name": {
+              "type": "string",
+              "example": "Bag"
             },
             "quantity": {
               "type": "integer",
               "format": "int32",
-              "example": 7
-            },
-            "shipDate": {
+              "example": 4
+            }
+          },
+          "xml": {
+            "name": "order"
+          }
+        },
+        "Product": {
+          "type": "object",
+          "properties": {
+            "name": {
               "type": "string",
-              "format": "date-time"
+              "example": "Bag"
             },
-            "status": {
-              "type": "string",
-              "description": "Order Status",
-              "example": "approved",
-              "enum": [
-                "placed",
-                "approved",
-                "delivered"
-              ]
-            },
-            "complete": {
-              "type": "boolean"
+            "price": {
+              "type": "integer",
+              "format": "int32",
+              "example": 20
             }
           },
           "xml": {
@@ -1056,6 +1050,32 @@
               "type": "string"
             },
             "message": {
+              "type": "string"
+            }
+          },
+          "xml": {
+            "name": "##default"
+          }
+        },
+        "OrderResponse": {
+          "type": "object",
+          "properties": {
+            "message": {
+              "type": "string",
+              "example": "Order fetched successfully"
+            },
+            "orders": {
+              "type": "string"
+            }
+          },
+          "xml": {
+            "name": "##default"
+          }
+        },
+        "PutOrder": {
+          "type": "object",
+          "properties": {
+            "quantity": {
               "type": "string"
             }
           },
