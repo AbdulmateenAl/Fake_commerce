@@ -143,6 +143,7 @@ def register_user():
             cur.close()
             conn.close()
             print("User created successfully")
+            return jsonify({"message": "User created successfully"})
         except Exception as e:
             return jsonify({"message": "An error occurred while creating the user", "error": str(e)}), 500
 
