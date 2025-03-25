@@ -311,7 +311,7 @@ def update_product(id):
     return jsonify({"message": "Product updated successfully"}), 200
 
 
-@app.route('/orders', methods=['POST'])  # Creates an order
+@app.route('/order', methods=['POST'])  # Creates an order
 def create_order():
     if request.content_type == 'application/json':
         response = request.get_json()
@@ -356,7 +356,7 @@ def get_orders():
     return jsonify({"message": "Orders fetched successfully", "orders": orders}), 200
 
 
-@app.route('/orders/<int:id>', methods=['GET'])  # Fetches an order by id
+@app.route('/order/<int:id>', methods=['GET'])  # Fetches an order by id
 def get_order(id):
     # Connects to the database and fetches the order by id
     try:
@@ -372,7 +372,7 @@ def get_order(id):
     return jsonify({"message": "Order fetched successfully", "order": order}), 200
 
 
-@app.route('/orders/<int:id>', methods=['DELETE'])  # Deletes an order by id
+@app.route('/order/<int:id>', methods=['DELETE'])  # Deletes an order by id
 def delete_order(id):
     # Connects to the database and deletes the order by id
     try:
@@ -387,7 +387,7 @@ def delete_order(id):
     return jsonify({"message": "Order deleted successfully"}), 200
 
 
-@app.route('/orders/<int:id>', methods=['PUT'])  # Updates an order by id
+@app.route('/order/<int:id>', methods=['PUT'])  # Updates an order by id
 def update_order(id):
     response = request.get_json()  # Gets the order from the request
     if not response:
