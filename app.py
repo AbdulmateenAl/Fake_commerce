@@ -398,8 +398,8 @@ def update_order(id):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("UPDATE orders SET product_id = %s, quantity = %s WHERE order_id = %s",
-                    (response['product_id'], response['quantity'], id))
+        cur.execute("UPDATE ordes SET quantity = %s WHERE order_id = %s",
+                    (response['quantity'], id))
         conn.commit()
         cur.close()
         conn.close()
