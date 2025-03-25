@@ -13,11 +13,13 @@
     {% for name, price in products %}
         <div class="product">
             <h3 id="product_name">{{ name }}</h3>
-            <h3>${{ price }}</h3>
-            <form action="/products" method="POST">
-                <input type="number" name="quantity" id="quantity" placeholder="Quantity" min="1", max="10", step="1">
-                <a href="{{ url_for('create_order') }}"><button type="submit">order</button></a>
-            </form>
+            <div class="price_quantity">
+                <h3>${{ price }}</h3>
+                <form action="/products" method="POST">
+                    <input type="number" name="quantity" id="quantity" placeholder="Quantity" min="1", max="10", step="1">
+                    <a href="{{ url_for('create_order') }}"><button type="submit">order</button></a>
+                </form>
+            </div>
         </div>
     {% endfor %}
     {% endblock %}
@@ -33,7 +35,7 @@
                     return alert('Please put in your quantity');
                 }
                 
-                fetch('/orders', {
+                fetch('//orders', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'

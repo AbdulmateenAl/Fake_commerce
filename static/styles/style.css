@@ -1,13 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins&display=swap');
+
+
+body{
+  font-family: "Poppins", sans-serif;
+  padding: 2rem;
+}
+
 .product {
   display: flex;
-  color: blue;
   flex-wrap: wrap;
   justify-content: space-between;
-  width: 250px;
-  height: 100px;
   align-items: center;
 }
 
+.price_quantity {
+  display: flex;
+  align-items: center;
+  width:40rem;
+  justify-content: space-between;
+}
+
 h3 {
-  color: red;
+  color: #333;
+}
+
+button, input {
+  font-family: inherit;
+}
+
+input, button{
+  padding: 10px 20px;
+}
+
+input{
+  outline: none;
+  margin-right: 2rem;
+}
+
+button{
+  border: none;
+  outline: none;
+  background-color: #c1121f;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 2rem;
 }

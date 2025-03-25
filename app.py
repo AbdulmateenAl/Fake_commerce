@@ -4,6 +4,7 @@ import os
 from flask import Flask, request, jsonify, render_template, session, make_response, redirect, url_for
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_cors import CORS
 
 from dotenv import load_dotenv
 
@@ -15,10 +16,35 @@ from functools import wraps
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
+from flask_swagger_ui import get_swaggerui_blueprint
+
 secret_key = os.getenv("secret_key")
 
 app = Flask(__name__)
+CORS(app)
 app.config['SECRET_KEY'] = secret_key
+
+SWAGGER_URL = '/api/docs'  # URL for exposing Swagger UI (without trailing '/')
+API_URL = 'http://petstore.swagger.io/v2/swagger.json'  # Our API url (can of course be a local resource)
+
+# Call factory function to create our blueprint
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,  # Swagger UI static files will be mapped to '{SWAGGER_URL}/dist/'
+    API_URL,
+    config={  # Swagger UI config overrides
+        'app_name': "Test application"
+    },
+    # oauth_config={  # OAuth config. See https://github.com/swagger-api/swagger-ui#oauth2-configuration .
+    #    'clientId': "your-client-id",
+    #    'clientSecret': "your-client-secret-if-required",
+    #    'realm': "your-realms",
+    #    'appName': "your-app-name",
+    #    'scopeSeparator': " ",
+    #    'additionalQueryStringParams': {'test': "hello"}
+    # }
+)
+
+app.register_blueprint(swaggerui_blueprint)
 
 load_dotenv()  # Loads environment variables
 user = os.getenv("user")
@@ -261,7 +287,7 @@ def delete_product(id):
     return jsonify({"message": "Product deleted successfully"}), 200
 
 
-@app.route('/products/<int:id>', methods=['PUT'])  # Updates a product by id
+@app.route('/product/<int:id>', methods=['PUT'])  # Updates a product by id
 def update_product(id):
     if request.content_type == 'application/json':
         response = request.get_json()
