@@ -99,29 +99,6 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
-
-@app.route('/', methods=['GET'])
-@validate_token
-@limiter.exempt
-def home():
-        
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT name, price FROM products;""")
-        products = cur.fetchall()
-        cur.close()
-        conn.close()
-    except Exception as e:
-        return jsonify({"message": "An error occurred while fetching the products", "error": str(e)}),
-    return render_template('home.html', products=products)
-
-@app.route('/auth', methods=['GET'])
-@validate_token
-def auth():
-    return render_template('home.html')
-
 @app.route('/register', methods=['GET', 'POST'])
 def register_user():
     if request.method == 'POST':
@@ -143,12 +120,93 @@ def register_user():
             cur.close()
             conn.close()
             print("User created successfully")
-            return jsonify({"message": "User created successfully"})
+            return redirect(url_for('login'))
         except Exception as e:
             return jsonify({"message": "An error occurred while creating the user", "error": str(e)}), 500
 
 
     return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        if not username or not password:
+            return jsonify({"message": "Missing username or password"}), 400
+        
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT username, password FROM users WHERE username = %s", (username,))
+            db_username, db_password = cur.fetchone()
+            cur.close()
+            conn.close()
+
+            if username == db_username and check_password_hash(db_password, password):
+                session['logged_in'] = True
+                token = jwt.encode(
+                    {'user': username, 'exp': datetime.now(
+                        timezone.utc) + timedelta(hours=1)},
+                    app.config['SECRET_KEY'],
+                    algorithm="HS256"
+                )
+                response = make_response(redirect(url_for("home", user=username)))
+                response.set_cookie(
+                    'token',
+                    token,
+                    httponly=True,
+                    secure=True,
+                    samesite='Strict'
+                )
+                return response
+        except Exception as e:
+            return jsonify({"message": "An error occurred while logging in", "error": str(e)}), 500
+
+    return render_template('login.html')
+
+@app.route("/", methods=["GET"])
+def landing_page():
+    return redirect(url_for("login"))
+
+@app.route('/<user>', methods=['GET'])
+@limiter.exempt
+@validate_token
+def home(user):
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+                    SELECT username from users WHERE username = %s""", (user,))
+        real_user = cur.fetchone()
+        cur.close()
+        conn.close()
+
+        if not real_user:
+            return redirect(url_for("login"))
+        print(real_user[0])
+        
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT name, price FROM products INNER JOIN users ON users.id = products.u_id WHERE username = %s;""", (user,))
+            products = cur.fetchall()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            return jsonify({"message": "An error occurred while fetching the products", "error": str(e)}),
+    except Exception as e:
+        return jsonify({"message": str(e)})
+    return render_template('home.html', products=products, username=real_user[0])
+
+@app.route('/auth', methods=['GET'])
+@validate_token
+def auth():
+    return render_template('home.html')
+
 
 @app.route('/admin/<user>', methods=['GET'])
 def admin(user):
@@ -167,44 +225,6 @@ def admin(user):
     return jsonify({"message": "You are not an authorized user"})
     
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-
-        if not username or not password:
-            return jsonify({"message": "Missing username or password"}), 400
-        
-        try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute("SELECT username, password FROM users WHERE username = %s", (request.form.get('username'),))
-            db_username, db_password = cur.fetchone()
-            cur.close()
-            conn.close()
-
-            if username == db_username and check_password_hash(db_password, password):
-                session['logged_in'] = True
-                token = jwt.encode(
-                    {'user': username, 'exp': datetime.now(
-                        timezone.utc) + timedelta(hours=1)},
-                    app.config['SECRET_KEY'],
-                    algorithm="HS256"
-                )
-                response = make_response(jsonify({"message": "Login successful"}))
-                response.set_cookie(
-                    'token',
-                    token,
-                    httponly=True,
-                    secure=True,
-                    samesite='Strict'
-                )
-                return response
-        except Exception as e:
-            return jsonify({"message": "An error occurred while logging in", "error": str(e)}), 500
-
-    return render_template('login.html')
 
 
 @app.route('/product', methods=['POST'])  # Creates a product
@@ -312,8 +332,8 @@ def update_product(id):
     return jsonify({"message": "Product updated successfully"}), 200
 
 
-@app.route('/order', methods=['POST'])  # Creates an order
-def create_order():
+@app.route('/<user>/order', methods=['POST'])  # Creates an order
+def create_order(user):
     if request.content_type == 'application/json':
         response = request.get_json()
     else:
@@ -323,14 +343,31 @@ def create_order():
 
     if not response:
         return jsonify({"message": "No order provided"}), 400
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+                SELECT id FROM users WHERE username = %s""", (user,))
+    result = cur.fetchone()
+    user_id = result[0]
+    cur.close()
+    conn.close()
 
     # Connects to the database and inserts the order
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("""CREATE TABLE IF NOT EXISTS orders(order_id SERIAL PRIMARY KEY, product_name VARCHAR(255), quantity INT)""")
-        cur.execute("""INSERT INTO orders (product_name, quantity) VALUES (%s, %s);""",
-                    (response.get('name'), response.get('quantity')))
+        cur.execute("""CREATE TABLE IF NOT EXISTS orders(
+                    order_id SERIAL PRIMARY KEY,
+                    product_name VARCHAR(255),
+                    quantity INT,
+                    u_id INT,
+                    FOREIGN KEY (u_id) REFERENCES users(id)
+                    );""")
+        cur.execute("""INSERT INTO orders
+                    (product_name, quantity, u_id)
+                    VALUES (%s, %s, %s);""",
+                    (response.get('name'), response.get('quantity'), user_id))
         conn.commit()
         cur.close()
         conn.close()
@@ -347,14 +384,14 @@ def get_orders():
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            "SELECT p.id, p.name, p.price, o.quantity FROM products p JOIN orders o ON p.name = o.product_name;")
+            "SELECT p.id, p.name, p.price, o.quantity FROM products p INNER JOIN orders o ON p.name = o.product_name INNER JOIN users u ON u.id = p.u_id;")
         orders = cur.fetchall()
         cur.close()
         conn.close()
     except Exception as e:
         return jsonify({"message": "An error occurred while fetching the orders", "error": str(e)}), 500
 
-    return jsonify({"message": "Orders fetched successfully", "orders": orders}), 200
+    return render_template("orders.html", orders=orders)
 
 
 @app.route('/order/<int:id>', methods=['GET'])  # Fetches an order by id

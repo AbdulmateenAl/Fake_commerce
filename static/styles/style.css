@@ -20,11 +20,26 @@ body{
   justify-content: space-between;
 }
 
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th, td {
+  text-align: left;
+  border-bottom: 1px solid #DDD;
+}
+
+tr:hover {
+  background-color: #D6EEEE;
+}
+
 h3 {
   color: #333;
 }
 
 button, input {
+  text-overflow: ellipsis;
   font-family: inherit;
 }
 
@@ -44,4 +59,13 @@ button{
   color: #fff;
   cursor: pointer;
   border-radius: 2rem;
+}
+
+.header {
+  position: relative;
+}
+
+.orders {
+  position: relative;
+  margin-left: 4px;
 }
