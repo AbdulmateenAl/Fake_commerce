@@ -119,7 +119,6 @@ def register_user():
             conn.commit()
             cur.close()
             conn.close()
-            print("User created successfully")
             return redirect(url_for('login'))
         except Exception as e:
             return jsonify({"message": "An error occurred while creating the user", "error": str(e)}), 500
@@ -227,8 +226,8 @@ def admin(user):
 
 
 
-@app.route('/product', methods=['POST'])  # Creates a product
-def create_product():
+@app.route('/<user>/product', methods=['POST'])  # Creates a product
+def create_product(user):
     if request.content_type == 'application/json':
         response = request.get_json()
     else:
@@ -244,14 +243,29 @@ def create_product():
     # with open('static/data/newproducts.json', "w", encoding="utf-8") as f:
     #     json.dump(data, f)
 
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+                SELECT id FROM users WHERE username = %s""", (user,))
+    result = cur.fetchone()
+    user_id = result[0]
+    cur.close()
+    conn.close()
+
     # Connects to the database and inserts the product
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            """CREATE TABLE IF NOT EXISTS products(id SERIAL PRIMARY KEY, name VARCHAR(255), price FLOAT)""")
-        cur.execute("""INSERT INTO products (name, price) VALUES (%s, %s);""",
-                    (response['name'], response['price']))
+            """CREATE TABLE IF NOT EXISTS products(
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255),
+            price FLOAT,
+            u_id INT,
+            FOREIGN KEY (u_id) REFERENCES users(id)
+            )""")
+        cur.execute("""INSERT INTO products (name, price, u_id) VALUES (%s, %s, %s);""",
+                    (response['name'], response['price'], user_id))
         conn.commit()
         cur.close()
         conn.close()
