@@ -441,7 +441,10 @@ def delete_order(id):
 
 @app.route('/order/<int:id>', methods=['PUT'])  # Updates an order by id
 def update_order(id):
-    response = request.get_json()  # Gets the order from the request
+    if request.content_type == "application/json":
+        response = request.get_json()  # Gets the order from the request
+    else:
+        response = request.form
     if not response:
         # Returns an error if no order is provided
         return jsonify({"message": "No order provided"}), 400
